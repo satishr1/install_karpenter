@@ -274,3 +274,4 @@ kubectl set env deployment karpenter -n karpenter KARPENTER_NAMESPACE=karpenter
 kubectl set env deployment karpenter -n karpenter CLUSTER_NAME=<your cluster name>
 
 
+kubectl rollout restart deployment karpenter -n karpenter
