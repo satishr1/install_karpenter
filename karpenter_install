@@ -1,3 +1,4 @@
+
 instsll AWS CLI
 ----------------------------------------------------
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -267,4 +268,9 @@ aws iam put-role-policy --role-name AmazonEKSConnectorAgentRole --policy-name Am
 
 
 aws eks describe-cluster --name <cluster_name> --query "cluster.{name: name, endpoint: endpoint}" --output yaml
+
+
+kubectl set env deployment karpenter -n karpenter KARPENTER_NAMESPACE=karpenter
+kubectl set env deployment karpenter -n karpenter CLUSTER_NAME=<your cluster name>
+
 
