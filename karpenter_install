@@ -1,0 +1,266 @@
+instsll AWS CLI
+----------------------------------------------------
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt install unzip
+unzip awscliv2.zip
+sudo ./aws/install
+
+install kubectl
+---------------------------------------------------------
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+chmod +x ./kubectl
+sudo mv ./kubectl /usr/local/bin
+kubectl version
+kubectl version -short
+
+
+install eksctl
+----------------------------------------------------------
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv /tmp/eksctl /usr/local/bin
+eksctl version
+
+
+Install Helm chart
+------------------------------------------------------------------
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+
+
+Install k8s cluster
+--------------------------------
+eksctl create cluster --name eks2  --region us-east-2 --nodegroup-name worker-nodes --node-type t2.medium --nodes 2 --nodes-min 2 --nodes-max 3
+
+
+
+
+To install Karpenter (a Kubernetes autoscaling solution) in your Kubernetes cluster, follow these steps:
+----------------------------------------------------------------------------------------------------------------------------------------------
+Prerequisites:
+	• Kubernetes Cluster: Ensure you have a running Kubernetes cluster (EKS, GKE, AKS, or self-managed).
+	• kubectl: You should have kubectl configured to manage your cluster.
+	• IAM Roles (if using AWS EKS): Karpenter requires specific AWS IAM permissions to create and manage EC2 instances for scaling.
+
+Step-by-Step Installation:
+	1. Add the Karpenter Helm Repository: First, add the official Karpenter Helm chart to your Helm repositories.
+			
+			helm repo add karpenter https://charts.karpenter.sh
+			helm repo update
+	2. Install Karpenter Using Helm: Install Karpenter into the karpenter namespace.
+			
+			helm install karpenter karpenter/karpenter --namespace karpenter --create-namespace --version 1.0.1  (you can ignore the version to install latest)
+			
+		Replace <Karpenter version> with the desired version number or omit it to install the latest version.  1.0.1
+	3. Karpenter Configuration: You’ll need to configure Karpenter based on your cluster’s cloud provider. For AWS EKS, ensure you create the required IAM roles and associate them with your Karpenter deployment.
+	
+	For AWS, follow these steps:
+	a. Create an IAM Role for Karpenter:
+		• Create an IAM Role that Karpenter can use to provision EC2 instances.
+	b. Associate the IAM Role with Karpenter:
+		• Attach the created role to Karpenter’s service account using an eksctl command or manually via AWS Management Console.
+
+	To create an IAM Role for Karpenter to provision EC2 instances on AWS EKS, follow these steps:
+	--------------------------------------------------------------------------------------------------------------------------------
+	Step 1: Create an IAM Policy for Karpenter
+		1. Sign in to the AWS Management Console.
+		2. Navigate to the IAM service.
+		3. Create a new policy:
+			○ Click Policies on the left-hand side.
+			○ Click Create policy.
+			○ In the JSON tab, add the following policy:
+				
+				{
+				  "Version": "2012-10-17",
+				  "Statement": [
+				    {
+				      "Effect": "Allow",
+				      "Action": [
+				        "ec2:RunInstances",
+				        "ec2:CreateTags",
+				        "ec2:DescribeInstances",
+				        "ec2:TerminateInstances",
+				        "ec2:DescribeSubnets",
+				        "ec2:DescribeSecurityGroups",
+				        "ec2:DescribeInstanceTypes",
+				        "ec2:DescribeLaunchTemplates",
+				        "ec2:DescribeKeyPairs",
+				        "ssm:GetParameter",
+				        "pricing:GetProducts",
+				        "iam:PassRole"
+				      ],
+				      "Resource": "*"
+				    }
+				  ]
+				}
+			○ Click Next: Tags (optional).
+			○ Click Next: Review.
+			○ Set the policy name to KarpenterInstancePolicy (or any suitable name).
+			○ Click Create policy.
+	Step 2: Create an IAM Role for Karpenter
+		1. Create the IAM Role:
+			○ Navigate to Roles in the IAM console.
+			○ Click Create Role.
+			○ For Trusted entity type, select AWS service.
+			○ For Use cases for other AWS services, choose EC2.
+			○ Click Next.
+		2. Attach the Policy:
+			○ Search for the KarpenterInstancePolicy (or the policy you just created).
+			○ Select the policy and click Next.
+		3. Set Role Name:
+			○ Name the role KarpenterInstanceRole.
+			○ Click Create Role.
+	Step 3: Add Trust Relationship for Karpenter
+		1. Go to the IAM Roles section and select the role you just created (KarpenterInstanceRole).
+		2. In the Trust relationships tab, click Edit trust policy.
+		3. Replace the existing policy with the following:
+				
+				{
+				  "Version": "2012-10-17",
+				  "Statement": [
+				    {
+				      "Effect": "Allow",
+				      "Principal": {
+				        "Service": "ec2.amazonaws.com"
+				      },
+				      "Action": "sts:AssumeRole"
+				    },
+				    {
+				      "Effect": "Allow",
+				      "Principal": {
+				        "Service": "karpenter.sh"
+				      },
+				      "Action": "sts:AssumeRole"
+				    }
+				  ]
+				}
+		4. Click Update Trust Policy.
+	Step 4: Associate the IAM Role with Karpenter
+	Once the IAM Role is created, you need to associate this role with Karpenter. There are two primary ways to do this: using eksctl or manually via a service account.
+	Option 1: Using eksctl
+	If you're using eksctl, you can associate the IAM Role with the Karpenter service account by running the following command:
+		
+		eksctl create iamserviceaccount \
+		  --cluster <your-cluster-name> \
+		  --namespace karpenter \
+		  --name karpenter \
+		  --attach-role-arn arn:aws:iam::<your-account-id>:role/KarpenterInstanceRole \
+		  --approve
+		
+		Create  oidc provider for eks cluster
+		oidc_id=$(aws eks describe-cluster --name eks2 --region us-east-2 --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
+		
+		aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4
+		
+		eksctl utils associate-iam-oidc-provider --cluster eks2 --approve --region us-east-2
+		
+		
+		eksctl create iamserviceaccount --cluster eks2 --region us-east-2  --namespace karpenter --name karpenter --attach-role-arn arn:aws:iam::851725249512:role/KarpenterInstanceRole --approve 
+		
+	Option 2: Manually Edit Karpenter Service Account
+	If you prefer manual setup:
+		1. Edit the Karpenter service account to include the IAM Role ARN:
+			
+			kubectl annotate serviceaccount -n karpenter karpenter \
+			eks.amazonaws.com/role-arn=arn:aws:iam::<your-account-id>:role/KarpenterInstanceRole
+			
+	After setting up the role and trust relationships, Karpenter will be able to assume the role and provision EC2 instances as needed for scaling your EKS workloads.
+	
+	1. Cluster Autoscaler: Karpenter acts as a cluster autoscaler by adjusting the number of worker nodes based on workload demand. Ensure that Karpenter is properly integrated with your cloud provider for scaling resources.
+	2. Create a Provisioner Resource: Define a Karpenter Provisioner that specifies how the scaling should occur. For example:
+			
+			apiVersion: karpenter.sh/v1alpha5
+			kind: Provisioner
+			metadata:
+			  name: default
+			spec:
+			  requirements:
+			    - key: "node.kubernetes.io/instance-type"
+			      operator: In
+			      values: ["t3.medium", "m5.large"]
+			  limits:
+			    resources:
+			      cpu: "1000"
+			  provider:
+			    subnetSelector:
+			      karpenter.sh/discovery: <your-cluster-name>
+			    securityGroupSelector:
+			      karpenter.sh/discovery: <your-cluster-name>
+		
+		Apply the provisioner:
+		
+			kubectl apply -f provisioner.yaml
+			
+	3. Monitor the Installation: Verify Karpenter is working by checking the logs:
+			
+		kubectl -n karpenter logs -l app.kubernetes.io/name=karpenter
+		
+	Once Karpenter is installed and properly configured, it will automatically scale your nodes based on the workloads running in the cluster.
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+	
+
+
+
+
+eksctl create cluster --name eks2  --region us-east-2 --nodegroup-name worker-nodes --node-type t2.medium --nodes 2 --nodes-min 2 --nodes-max 3
+
+
+
+eksctl get iamidentitymapping --cluster eks2 --region=us-east-2
+
+
+eksctl create iamidentitymapping --cluster eks2 --region=us-east-2 --arn arn:aws:iam::851725249512:role/my-console-viewer-role --group eks-console-dashboard-full-access-group --no-duplicate-arns
+
+
+
+oidc_id=$(aws eks describe-cluster --name eks2 --region us-east-2 --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
+
+oidc_id=$(aws eks describe-cluster --name eks2 --region us-east-2 --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
+
+aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4
+
+eksctl utils associate-iam-oidc-provider --cluster eks2 --approve --region us-east-2
+
+
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "eks:ListFargateProfiles",
+                "eks:DescribeNodegroup",
+                "eks:ListNodegroups",
+                "eks:ListUpdates",
+                "eks:AccessKubernetesApi",
+                "eks:ListAddons",
+                "eks:DescribeCluster",
+                "eks:DescribeAddonVersions",
+                "eks:ListClusters",
+                "eks:ListIdentityProviderConfigs",
+                "iam:ListRoles"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ssm:GetParameter",
+            "Resource": "arn:aws:ssm:*:851725249512:parameter/*"
+        }
+    ]
+}  
+
+
+
+
+
+
+
+aws iam create-role --role-name AmazonEKSConnectorAgentRole --assume-role-policy-document file://eks-connector-agent-trust-policy.json
+
+
+aws iam put-role-policy --role-name AmazonEKSConnectorAgentRole --policy-name AmazonEKSConnectorAgentPolicy --policy-document file://eks-connector-agent-policy.json
+
