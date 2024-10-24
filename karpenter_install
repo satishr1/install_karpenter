@@ -275,3 +275,8 @@ kubectl set env deployment karpenter -n karpenter CLUSTER_NAME=<your cluster nam
 
 
 kubectl rollout restart deployment karpenter -n karpenter
+
+
+
+kubectl set env deployment karpenter -n karpenter KARPENTER_CLUSTER_ENDPOINT=https://
+
