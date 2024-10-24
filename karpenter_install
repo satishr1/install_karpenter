@@ -264,3 +264,7 @@ aws iam create-role --role-name AmazonEKSConnectorAgentRole --assume-role-policy
 
 aws iam put-role-policy --role-name AmazonEKSConnectorAgentRole --policy-name AmazonEKSConnectorAgentPolicy --policy-document file://eks-connector-agent-policy.json
 
+
+
+aws eks describe-cluster --name <cluster_name> --query "cluster.{name: name, endpoint: endpoint}" --output yaml
+
