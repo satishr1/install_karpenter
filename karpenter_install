@@ -287,3 +287,29 @@ kubectl set env deployment karpenter -n karpenter KARPENTER_CLUSTER_ENDPOINT=htt
 
 sudo yum install -y https://download.postgresql.org/pub/repos/yum/16/redhat/rhel-7-x86_64/pgdg-amazon-linux2-16-1.noarch.rpm
 
+
+PostgreSQL 16.3 in amazon Linux2
+------------------------------------------------------
+
+sudo yum update
+
+sudo yum groupinstall "Development Tools"
+
+wget https://ftp.postgresql.org/pub/source/v16.3/postgresql-16.3.tar.gz
+
+tar -xzvf postgresql-16.3.tar.gz
+
+cd postgresql-16.3
+
+./configure --prefix=/usr/local/pgsql
+
+make
+
+make install
+
+export PATH=/usr/local/pgsql/bin:$PATH
+
+
+source ~/.bashrc
+
+psql --version
