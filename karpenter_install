@@ -313,3 +313,6 @@ export PATH=/usr/local/pgsql/bin:$PATH
 source ~/.bashrc
 
 psql --version
+
+
+sudo yum install -y libicu libicu-devel
