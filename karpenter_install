@@ -278,5 +278,9 @@ kubectl rollout restart deployment karpenter -n karpenter
 
 
 
+sudo yum install -y https://download.postgresql.org/pub/repos/yum/16/redhat/rhel-7-x86_64/pgdg-amazon-linux2-16-1.noarch.rpm
+
+
+
 kubectl set env deployment karpenter -n karpenter KARPENTER_CLUSTER_ENDPOINT=https://
 
