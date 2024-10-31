@@ -316,3 +316,6 @@ psql --version
 
 
 sudo yum install -y libicu libicu-devel
+
+sudo yum install -y readline-devel
+
