@@ -319,3 +319,9 @@ sudo yum install -y libicu libicu-devel
 
 sudo yum install -y readline-devel
 
+sudo nano /etc/profile.d/pgsql_path.sh
+
+export PATH=/usr/local/pgsql/bin:$PATH
+
+source /etc/profile
+
